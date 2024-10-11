@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Driveway Slope Calculator</title>
+</head>
+<body>
+    <h1>Driveway Slope Calculator</h1>
+
+    <!-- Input Section -->
+    <form id="slopeForm">
+        <!-- Elevation Difference (Back of Sidewalk to Flowline) -->
+        <label for="elevationDifference">Elevation Difference (Back of Sidewalk to Flowline):</label>
+        <input type="number" id="elevationDifference" name="elevationDifference" step="any" required>
+        <select id="elevationUnit" name="elevationUnit">
+            <option value="feet">Feet</option>
+            <option value="inches">Inches</option>
+        </select>
+        <br><br>
+
+        <!-- Sidewalk Length -->
+        <label for="sidewalkLength">Sidewalk Length (feet):</label>
+        <input type="number" id="sidewalkLength" name="sidewalkLength" step="any" required>
+        <br><br>
+
+        <!-- Driveway Apron Length -->
+        <label for="drivewayLength">Driveway Length (feet):</label>
+        <input type="number" id="drivewayLength" name="drivewayLength" step="any" required>
+        <br><br>
+
+        <!-- Flowline to Street Elevation Difference -->
+        <label for="flowlineStreetElevation">Elevation Difference (Flowline to Street at 7 feet):</label>
+        <input type="number" id="flowlineStreetElevation" name="flowlineStreetElevation" step="any" required>
+        <select id="flowlineElevationUnit" name="flowlineElevationUnit">
+            <option value="feet">Feet</option>
+            <option value="inches">Inches</option>
+        </select>
+        <br><br>
+
+        <!-- Garage Apron (Optional) -->
+        <fieldset>
+            <legend>Garage Apron (Optional)</legend>
+
+            <!-- Width of Garage Apron -->
+            <label for="garageWidth">Garage Apron Width (feet):</label>
+            <input type="number" id="garageWidth" name="garageWidth" step="any">
+            <br><br>
+
+            <!-- Elevation Difference between Garage Floor and Back of Sidewalk -->
+            <label for="garageElevationDifference">Elevation Difference (Garage Floor to Back of Sidewalk):</label>
+            <input type="number" id="garageElevationDifference" name="garageElevationDifference" step="any">
+            <select id="garageElevationUnit" name="garageElevationUnit">
+                <option value="feet">Feet</option>
+                <option value="inches">Inches</option>
+            </select>
+        </fieldset>
+
+        <br><br>
+
+        <!-- Submit Button -->
+        <input type="button" value="Calculate" onclick="calculateSlope()">
+    </form>
+
+    <!-- Output Section -->
+    <h2>Results</h2>
+    <div id="results">
+        <!-- Results will be displayed here -->
+    </div>
+
+    <script>
+        function calculateSlope() {
+            // Collect inputs from the form
+            let elevationDiff = parseFloat(document.getElementById('elevationDifference').value);
+            let sidewalkLength = parseFloat(document.getElementById('sidewalkLength').value);
+            let drivewayLength = parseFloat(document.getElementById('drivewayLength').value);
+            let flowlineStreetElevation = parseFloat(document.getElementById('flowlineStreetElevation').value);
+            let garageWidth = parseFloat(document.getElementById('garageWidth').value);
+            let garageElevationDiff = parseFloat(document.getElementById('garageElevationDifference').value);
+            
+            let elevationUnit = document.getElementById('elevationUnit').value;
+            let flowlineElevationUnit = document.getElementById('flowlineElevationUnit').value;
+            let garageElevationUnit = document.getElementById('garageElevationUnit').value;
+
+            // Handle conversions for elevation differences (if needed)
+            if (elevationUnit === "inches") {
+                elevationDiff /= 12; // Convert to feet
+            }
+            if (flowlineElevationUnit === "inches") {
+                flowlineStreetElevation /= 12; // Convert to feet
+            }
+            if (garageElevationUnit === "inches") {
+                garageElevationDiff /= 12; // Convert to feet
+            }
+
+            // Fixed values
+            const sidewalkSlope = 0.02; // 2% slope
+            const curbHeight = 0.875 / 12; // Curb height in feet
+
+            // Step 1: Calculate the sidewalk height difference and remaining elevation
+            let sidewalkHeightDiff = sidewalkSlope * sidewalkLength;
+            let remainingElevation = elevationDiff - sidewalkHeightDiff - curbHeight;
+            let drivewayApronSlope = (remainingElevation / drivewayLength) * 100;
+
+            // Step 2: Calculate the differential slope
+            let flowlineSlope = (flowlineStreetElevation / 7) * 100;
+            let differentialSlope = drivewayApronSlope + flowlineSlope;
+
+            // Step 3: Compliance Check
+            let result = `Initial Driveway Apron Slope: ${drivewayApronSlope.toFixed(2)}%<br>`;
+            result += `Initial Differential Slope: ${differentialSlope.toFixed(2)}%<br>`;
+
+            // Step 4: If non-compliant, reduce the sidewalk width to 4 feet
+            if (drivewayApronSlope > 8.3) {
+                sidewalkLength = 4;
+                drivewayLength += (6 - sidewalkLength); // Adjust driveway length accordingly
+                sidewalkHeightDiff = sidewalkSlope * sidewalkLength;
+                remainingElevation = elevationDiff - sidewalkHeightDiff - curbHeight;
+                drivewayApronSlope = (remainingElevation / drivewayLength) * 100;
+                differentialSlope = drivewayApronSlope + flowlineSlope;
+
+                result += `<br>After reducing sidewalk to 4':<br>`;
+                result += `Recalculated Driveway Apron Slope: ${drivewayApronSlope.toFixed(2)}%<br>`;
+                result += `Recalculated Differential Slope: ${differentialSlope.toFixed(2)}%<br>`;
+            }
+
+            // Step 5: If still non-compliant, include garage apron for adjustment
+            if (drivewayApronSlope > 8.3 && garageWidth && garageElevationDiff) {
+                let garageSlope = (garageElevationDiff / garageWidth) * 100;
+                if (garageSlope <= 8.3) {
+                    // Reduce elevation difference by considering garage apron at 8.3%
+                    let reducedElevation = elevationDiff - (garageWidth * 8.3 / 100);
+                    remainingElevation = reducedElevation - sidewalkHeightDiff - curbHeight;
+                    drivewayApronSlope = (remainingElevation / drivewayLength) * 100;
+                    differentialSlope = drivewayApronSlope + flowlineSlope;
+
+                    result += `<br>After including garage apron:<br>`;
+                    result += `Final Driveway Apron Slope: ${drivewayApronSlope.toFixed(2)}%<br>`;
+                    result += `Final Differential Slope: ${differentialSlope.toFixed(2)}%<br>`;
+                } else {
+                    result += `<br>Garage apron slope exceeds 8.3% and cannot be included.<br>`;
+                }
+            }
+
+            // Final compliance result
+            if (drivewayApronSlope <= 8.3) {
+                result += "Driveway apron is compliant.";
+            } else if (differentialSlope <= 12) {
+                result += "Driveway apron is non-compliant, but differential slope is compliant.";
+            } else {
+                result += "Driveway and differential slopes are non-compliant.";
+            }
+
+            document.getElementById('results').innerHTML = result;
+        }
+    </script>
+</body>
+</html>
